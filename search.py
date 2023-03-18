@@ -14,7 +14,7 @@ client = tweepy.Client(BEARER,API_KEY,API_SECRET,ACCESS_KEY,ACCESS_SECRET)
 auth = tweepy.OAuth1UserHandler(API_KEY,API_SECRET,ACCESS_KEY,ACCESS_SECRET)
 api = tweepy.API(auth)
 
-search = ['NTR']
+search = ['maheshbabu','mahesh','ssmb28','trivikram']
 
 class MyStream(tweepy.StreamingClient):
     def on_connect(self):
@@ -22,8 +22,8 @@ class MyStream(tweepy.StreamingClient):
         self.f = open('tweets.txt','w',encoding='UTF-8')
         
     def on_tweet(self, tweet):
-        if tweet.referenced_tweets == None:
-            self.f.write(tweet.text)
+        # if tweet.referenced_tweets == None:
+        self.f.write(tweet.text)
     
     def on_disconnect(self):
         rules = self.get_rules()
