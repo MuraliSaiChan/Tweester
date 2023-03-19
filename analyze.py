@@ -5,7 +5,7 @@ from nltk import pos_tag
 from nltk.corpus import wordnet as  wn
 from nltk.sentiment import SentimentIntensityAnalyzer
 import numpy as np
-from collections import Counter, defaultdict
+from collections import  defaultdict
 import regex as re
 import string
 
@@ -14,11 +14,12 @@ import seaborn as sns
 import matplotlib.animation as animation
 
 from time import sleep
+
 class Analyze:
     
     def __init__(self):
         print("Please don't forget to call exit.")
-        self.master = pd.DataFrame({'data':[],'scores':[],'sentiment':[]})
+        self.master = pd.DataFrame({'data':[],'scores':[],'sentiment':[],'scores_updated':[]})
         self.df = None
         self.c = []
         # self.f = open('tweets.txt','r',encoding='UTF-8')
@@ -42,9 +43,10 @@ class Analyze:
                            u"\U000024C2-\U0001F251"
                            "]+", flags=re.UNICODE)
         
-        self.x = []
-        self.y = []
+        self.x = [1]
+        self.y = [1]
         
+        sns.set_style('darkgrid')
         # self.fig = plt.figure()
         # self.ax = self.fig.add_subplot(1,1,1)
         
@@ -74,8 +76,8 @@ class Analyze:
 
         tokens = self.remove_stops(text)
     
-        # lemma = WordNetLemmatizer()
-        # tokens = [lemma.lemmatize(i,self.tag_map[j[0]]) for i,j in pos_tag(tokens)]
+        lemma = WordNetLemmatizer()
+        tokens = [lemma.lemmatize(i,self.tag_map[j[0]]) for i,j in pos_tag(tokens)]
 
         return ' '.join(tokens) if retSent else tokens 
     
@@ -87,9 +89,10 @@ class Analyze:
         self.df['data'] = self.df.data.astype('string').str.replace(r'#[\S]+',"",regex=True)
         self.df['data'] = self.df.data.astype('string').str.replace(r'[\s]+'," ",regex=True)
         self.df['data'] = self.df.data.astype('string').str.replace(r'http[s]?:[\S]+',"",regex=True)
+        self.df['data'] = self.df.data.astype('string').str.replace(r'[^\s\w]',"",regex=True)
         self.df['data'] = self.df.data.astype('string').map(lambda x:self.emoji_pattern.sub(r'',x))
         
-        self.df['data'] = self.df.data.map(lambda x:self.clean_words(x))
+        self.df['data'] = self.df.data.map(self.clean_words)
         self.df['scores'] = self.df['data'].map(lambda x:self.sia.polarity_scores(x)['compound'])
         
         self.df = self.df[self.df.scores != 0]
@@ -98,12 +101,23 @@ class Analyze:
         self.df['scores'] = abs(self.df.scores)
         self.master = pd.concat([self.master,self.df])
         self.pointer = self.master.shape[0]
+        
+        b = self.master.sentiment.value_counts()
+        
+        try:
+            self.master['scores_updated'] = (np.where(self.master.sentiment == 'negative',\
+                                    self.master.scores*b.loc['negative'],\
+                                    self.master.scores*b.loc['positive']))/self.pointer
+        except KeyError:
+            pass
+            
         for i in self.df.data:
             self.c.extend(i.split())
         
-        self.c1 = nltk.FreqDist(self.c).most_common(10)
+        self.c1 = nltk.FreqDist(self.c).most_common(20)[2:-2]
         print(self.c1)
-        
+        self.x=[]
+        self.y = []
         for i in self.c1:
             self.x.append(i[0])
             self.y.append(i[1])
@@ -112,24 +126,37 @@ class Analyze:
         # plt.subplots(1,1,1)
         
         # plt.bar(x = self.master.sentiment, height = self.master.scores);
-        t = self.master.groupby('sentiment').scores.mean()
+        t = self.master.groupby('sentiment').scores_updated.mean().map(lambda x:round(x,2)).reset_index()
         print(self.master.shape,t.values)
-        self.ax1.clear()
-        self.ax1.bar(t.index.values, height = t.values,color=['r','g'])
         
-        self.ax2.clear()
-        self.ax2.barh(self.x, width = self.y)
-        
+        try:
+            self.ax1.clear()
+            self.ax1.set_title('Total tweets processed : '+str(self.pointer))
+            # self.ax1.bar(t.index.values, height = t.values,color=['r','g'])
+            b = sns.barplot(data = t, x = 'sentiment', y = 'scores_updated', ax = self.ax1, palette = 'Blues_r')
+            b.bar_label(b.containers[0])
+            self.ax2.clear()
+            sns.barplot(y=self.x, x = self.y,ax=self.ax2, palette = 'Blues_r')
+        except ValueError:
+            sleep(3)
+            print("value error occured, please wait until the data is available.")
         
     def visualize(self):
         # while True:
         #     self.visualize_helper()
         #     sleep(2)
-        self.fig = plt.figure()
+        self.fig = plt.figure(figsize=(10,10))
         self.ax1 = self.fig.add_subplot(1,2,1)
+        
         self.ax2 = self.fig.add_subplot(1,2,2)
         self.ani = animation.FuncAnimation(self.fig, self.visualize_helper, interval = 3000)
         plt.show()
+
         
     def exit(self):
-        self.f.close()
+        del self.df
+        del self.master
+
+if __name__ == '__main__':
+    a = Analyze()
+    a.visualize()
