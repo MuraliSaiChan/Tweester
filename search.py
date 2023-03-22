@@ -1,5 +1,7 @@
 import tweepy
 from constants import *
+import json
+import pandas as pd
 
 
 class MyStream(tweepy.StreamingClient):
@@ -8,14 +10,16 @@ class MyStream(tweepy.StreamingClient):
         self.f = open('tweets.txt','w',encoding='UTF-8')
         
     def on_tweet(self, tweet):
-        if tweet.referenced_tweets == None:
+        if tweet.referenced_tweets is None and tweet.lang == 'en':
             self.f.write(tweet.text)
+            # print(tweet.data)
     
     def on_disconnect(self):
         rules = self.get_rules()
         for i in rules[0]:
             self.delete_rules([i[2]])
         self.f.close()
+        print('disconnected')
         
 class Stream:
     
@@ -24,7 +28,13 @@ class Stream:
 
         auth = tweepy.OAuth1UserHandler(API_KEY,API_SECRET,ACCESS_KEY,ACCESS_SECRET)
         api = tweepy.API(auth)
-
+        # self.latlong = pd.read_json('latlong.json')
+        # self.latlong['city'] = self.latlong.city.str.lower()
+        # self.latlong['nation'] = self.latlong.nation.str.lower()
+        # temp = self.latlong[self.latlong.city.str.contains('hyderabad')].iloc[1,2:]
+        woeid = api.closest_trends(lat = temp[0], long = temp[1])[0]['woeid']
+        print(api.get_place_trends(woeid))
+        
         self.search = search
     
         self.stream = MyStream(BEARER)            
@@ -40,6 +50,6 @@ class Stream:
         self.stream.disconnect()
         
 if __name__ == '__main__':
-    stream = Stream(['Indvsaus','indvaus'])
+    stream = Stream(['indvsaus','rohit','gill'])
     stream.filter()        
     stream.disconnect()

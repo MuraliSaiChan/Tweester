@@ -41,7 +41,7 @@ class Analyze:
                            u"\U0001F1E0-\U0001F1FF" # flags (iOS)
                            u"\U00002702-\U000027B0"
                            u"\U000024C2-\U0001F251"
-                           "]+", flags=re.UNICODE)
+                           "]+")
         
         self.x = [1]
         self.y = [1]
